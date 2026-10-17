@@ -10,9 +10,8 @@ type PageProps = {
 
 export default async function Slug({ params }: PageProps) {
   const { slug } = await params
-  const sessionCookie = (await cookies()).get('understand-session')?.value
-
-  const news = sessionCookie ? await NewsModel.getAll(sessionCookie) : []
+  const cookieStore = await cookies()
+  const news = await NewsModel.getAll(cookieStore.toString())
   const post = news.find((item) => item.data.slug === slug)
 
   if (!post) {

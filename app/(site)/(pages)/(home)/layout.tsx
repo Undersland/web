@@ -1,10 +1,10 @@
 import { HugeiconsIcon } from '@hugeicons/react'
 import { SearchIcon } from '@hugeicons/core-free-icons'
-import { cookies } from 'next/headers'
 
 import { News } from '@/components/news'
 import { NewsModel } from '@/model/news'
 import { Navigation } from '@/components/level-navigation'
+import { cookies } from 'next/headers'
 import type { ReactNode } from 'react'
 
 const contentTabs = [
@@ -17,8 +17,8 @@ interface HomeProps {
 }
 
 export default async function Home({ children }: HomeProps) {
-  const sessionCookie = (await cookies()).get('understand-session')?.value
-  const news = sessionCookie ? await NewsModel.getAll(sessionCookie) : []
+  const cookieStore = await cookies()
+  const news = await NewsModel.getAll(cookieStore.toString())
   const selectedTab = 'News'
 
   return (

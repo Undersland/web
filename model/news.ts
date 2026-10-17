@@ -67,14 +67,19 @@ function normalizeNews(item: ApiNews): New {
 
 // biome-ignore lint/complexity/noStaticOnlyClass: <>
 export class NewsModel {
-  static async getAll(sessionCookie: string): Promise<New[]> {
+  static async getAll(cookieHeader?: string): Promise<New[]> {
+    const headers = new Headers({ accept: 'application/json' })
+
+    // Keep the frontend compatible with API deployments that still protect
+    // this route while allowing the current public endpoint to work as-is.
+    if (cookieHeader) headers.set('cookie', cookieHeader)
+
     const response = await fetch(new URL('/news', apiUrl), {
       cache: 'no-store',
-      headers: {
-        accept: 'application/json',
-        cookie: `understand-session=${sessionCookie}`,
-      },
+      headers,
     })
+
+    console.log('response', JSON.stringify(response, null, 2))
 
     if (!response.ok) {
       throw new Error(

@@ -1,6 +1,6 @@
 import { Header } from '@/components/header'
 
-export default function UnprotectedLayout({ children }: LayoutProps<'/'>) {
+export default function PagesLayout({ children }: LayoutProps<'/'>) {
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
       <Header />

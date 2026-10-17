@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Space_Mono, Instrument_Serif, Geist } from 'next/font/google'
 import Script from 'next/script'
-import { AuthFeedback } from '@/components/auth-feedback'
 import './globals.css'
 import { cn } from '@/lib/utils'
 
@@ -83,15 +82,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       )}
       suppressHydrationWarning
     >
-      <head>
-        <Script id="theme-initializer" strategy="beforeInteractive">
-          {themeScript}
-        </Script>
-      </head>
-      <body className="min-h-full flex flex-col">
-        {children}
-        {/* <AuthFeedback /> */}
-      </body>
+      <body className="min-h-full flex flex-col">{children}</body>
+      <Script id="theme-initializer" strategy="beforeInteractive">
+        {themeScript}
+      </Script>
     </html>
   )
 }
