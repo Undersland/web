@@ -82,7 +82,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       )}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="h-screen min-w-screen">{children}</body>
       <Script id="theme-initializer" strategy="beforeInteractive">
         {themeScript}
       </Script>

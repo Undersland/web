@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_ENV=development next dev",
-    "prod": "NODE_ENV=production next dev",
+    "dev": "NODE_ENV=development next dev -p 3004",
+    "prod": "NODE_ENV=production next dev -p 3004",
     "build": "next build",
-    "start": "next start"
+    "start": "next start -p 3004"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
