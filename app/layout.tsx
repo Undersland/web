@@ -3,6 +3,7 @@ import { DM_Sans, Space_Mono, Instrument_Serif, Geist } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { cn } from '@/lib/utils'
+import { Toaster } from '@/components/ui/sonner'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -82,7 +83,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       )}
       suppressHydrationWarning
     >
-      <body className="h-screen min-w-screen">{children}</body>
+      <body className="h-screen min-w-screen">
+        {children}
+        <Toaster richColors />
+      </body>
       <Script id="theme-initializer" strategy="beforeInteractive">
         {themeScript}
       </Script>

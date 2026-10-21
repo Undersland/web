@@ -1,3 +1,4 @@
+import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -23,6 +24,8 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'long',
   timeStyle: 'short',
 })
+
+const levels = ['Beginner', 'Intermediate', 'Advanced'] as const
 
 async function getNews(slug: string) {
   const response = await fetch(
@@ -54,79 +57,90 @@ function getContentKey(content: string) {
   return hash
 }
 
-function getPreviewDocument(content: string) {
-  return `<!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'" />
-        <style>
-          body { color: #27272a; font: 16px/1.75 system-ui, sans-serif; margin: 0; }
-          h1, h2, h3 { line-height: 1.25; }
-          img { height: auto; max-width: 100%; }
-          a { color: inherit; text-decoration: underline; }
-        </style>
-      </head>
-      <body>${content}</body>
-    </html>`
-}
-
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ level?: string }>
 }) {
   const { slug } = await params
+  const { level = 'beginner' } = await searchParams
   const news = await getNews(slug)
   const createdAt = new Date(news.createdAt)
+  const selectedLevelIndex = Math.max(
+    levels.findIndex((item) => item.toLowerCase() === level.toLowerCase()),
+    0,
+  )
+  const selectedContent = news.html[selectedLevelIndex]
 
   return (
-    <article>
+    <article className="py-14">
       <Link
         href="/app/news"
-        className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+        className="text-sm gap-2.5 text-muted-foreground hover:text-foreground flex items-center"
       >
-        ← Back to news
-      </Link>
+        <ChevronLeft className="text-foreground size-3.5" />
 
-      <header className="mt-6 border-b pb-6">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs font-sans text-muted-foreground">
           {Number.isNaN(createdAt.getTime())
             ? 'Date unavailable'
-            : dateFormatter.format(createdAt)}
+            : dateFormatter.format(createdAt)}{' '}
+          • {news.slug}
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+      </Link>
+
+      <header className="mt-6 pb-6">
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
           {news.title}
         </h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">
+        <p className="mt-5 text-sm leading-5 text-muted-foreground">
           {news.shortDescription}
-        </p>
-        <p className="mt-4 font-mono text-xs text-muted-foreground">
-          {news.slug}
         </p>
       </header>
 
-      <div className="mt-8 space-y-8">
-        {news.html.map((content, index) => (
-          <section
-            key={`${news.id}-${getContentKey(content)}`}
-            className="rounded-lg border p-6"
-          >
-            <h2 className="mb-5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Version {index + 1}
-            </h2>
-            <iframe
-              title={`Version ${index + 1} content`}
-              sandbox=""
-              srcDoc={getPreviewDocument(content)}
-              className="h-[32rem] w-full border-0 bg-white"
-            />
-          </section>
-        ))}
+      <div className="mt-8">
+        {news.html.length > 0 && (
+          <>
+            <nav
+              aria-label="Article level"
+              className="flex gap-10 border-b border-border"
+            >
+              {levels.map((item, index) => {
+                const isActive = index === selectedLevelIndex
+
+                return (
+                  <Link
+                    key={item}
+                    href={`?level=${item.toLowerCase()}`}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`-mb-px border-b pb-5 text-[15px] transition-colors ${
+                      isActive
+                        ? 'border-foreground text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {item}
+                  </Link>
+                )
+              })}
+            </nav>
+
+            {selectedContent && (
+              <section className="mt-8">
+                <article
+                  key={`${news.id}-${getContentKey(selectedContent)}`}
+                  className="prose prose-sm prose-strong:font-medium max-w-none [&_b]:font-medium"
+                  // biome-ignore lint/security/noDangerouslySetInnerHtml: The API stores the article as trusted HTML.
+                  dangerouslySetInnerHTML={{ __html: selectedContent }}
+                />
+              </section>
+            )}
+          </>
+        )}
 
         {news.html.length === 0 && (
-          <div className="rounded-lg border px-6 py-10 text-center text-muted-foreground">
+          <div className="px-6 py-10 text-center text-muted-foreground">
             This news article has no content.
           </div>
         )}

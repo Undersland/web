@@ -1,26 +1,20 @@
+import { ListFilter, Search } from 'lucide-react'
 import Link from 'next/link'
-import { CalendarDays, ChevronDown, ListFilter, Search } from 'lucide-react'
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
-
-type NewsItem = {
-  id: string
-  title: string
-  shortDescription: string
-  slug: string
-  createdAt: string
-}
-
-type NewsResponse = {
-  data: {
-    content: NewsItem[]
-  }
-  error: unknown
-}
+import CreateNewsForm from '@/components/create-news-form'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
+import { getByline, getNews, type NewsItem } from './data'
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
 })
 
 function formatDate(value: string) {
@@ -29,191 +23,123 @@ function formatDate(value: string) {
   return Number.isNaN(date.getTime()) ? '—' : dateFormatter.format(date)
 }
 
-function countArticlesSince(news: NewsItem[], days: number) {
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-
-  return news.filter((item) => {
-    const createdAt = new Date(item.createdAt).getTime()
-
-    return !Number.isNaN(createdAt) && createdAt >= cutoff
-  }).length
-}
-
-function filterNews(news: NewsItem[], query: string, period: string) {
+function filterNews(news: NewsItem[], query: string) {
   const normalizedQuery = query.trim().toLowerCase()
-  const days = Number(period)
-  const cutoff = Number.isFinite(days)
-    ? Date.now() - days * 24 * 60 * 60 * 1000
-    : null
 
-  return news.filter((item) => {
-    const matchesQuery =
-      !normalizedQuery ||
+  if (!normalizedQuery) return news
+
+  return news.filter(
+    (item) =>
       item.title.toLowerCase().includes(normalizedQuery) ||
       item.slug.toLowerCase().includes(normalizedQuery) ||
-      item.shortDescription.toLowerCase().includes(normalizedQuery)
-    const createdAt = new Date(item.createdAt).getTime()
-    const matchesPeriod =
-      cutoff === null || (!Number.isNaN(createdAt) && createdAt >= cutoff)
-
-    return matchesQuery && matchesPeriod
-  })
-}
-
-async function getNews() {
-  const response = await fetch(new URL('/core/v1/news', apiUrl), {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Unable to load news: ${response.status}`)
-  }
-
-  const payload = (await response.json()) as NewsResponse
-
-  return payload.data.content
+      item.shortDescription.toLowerCase().includes(normalizedQuery),
+  )
 }
 
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; period?: string }>
+  searchParams: Promise<{ q?: string }>
 }) {
-  const { q = '', period = 'all' } = await searchParams
+  const { q = '' } = await searchParams
   const news = await getNews()
-  const filteredNews = filterNews(news, q, period)
-  const metrics = [
-    {
-      label: 'Total articles',
-      value: news.length,
-      description: 'All published articles',
-      color: 'bg-cyan-500',
-    },
-    {
-      label: 'Last 365 days',
-      value: countArticlesSince(news, 365),
-      description: 'Published in the last 365 days',
-      color: 'bg-amber-500',
-    },
-    {
-      label: 'Last 30 days',
-      value: countArticlesSince(news, 30),
-      description: 'Published in the last 30 days',
-      color: 'bg-emerald-500',
-    },
-    {
-      label: 'Last 7 days',
-      value: countArticlesSince(news, 7),
-      description: 'Published in the last 7 days',
-      color: 'bg-rose-500',
-    },
-  ]
+  const filteredNews = filterNews(news, q)
 
   return (
-    <section className='relative min-h-screen py-12'>
-      <div className="mb-12 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="mt-1 text-3xl font-semibold -tracking-wider">News</h1>
-        </div>
+    <section className="flex min-h-screen flex-col">
+      <div className="mt-20 flex flex-1 flex-col sm:mt-28">
+        <ul className="space-y-16 sm:space-y-20 pb-20">
+          {filteredNews.map((item) => (
+            <li key={item.id}>
+              <Link href={`/app/news/${item.slug}`} className="block max-w-3xl">
+                <article className="group inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4">
+                  <h2 className="text-[15px] font-medium leading-snug tracking-tight transition-opacity group-hover:opacity-65">
+                    {item.title}
+                  </h2>
+                </article>
 
-        <Link
-          href="/app/news/create"
-          className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          New article
-        </Link>
-      </div>
-
-      <dl className="mb-8 grid border-b pb-7 sm:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((metric, index) => (
-          <div
-            key={metric.label}
-            className={`py-4 sm:px-6 sm:first:pl-0 lg:py-0 ${
-              index > 0 ? 'border-t sm:border-t-0 sm:border-l' : ''
-            } ${index === 2 ? 'sm:border-l-0 lg:border-l' : ''}`}
-          >
-            <dt className="text-sm text-muted-foreground">{metric.label}</dt>
-            <dd className="mt-2 flex items-center gap-4">
-              <span className="text-2xl font-semibold tabular-nums">
-                {metric.value.toLocaleString('en-US')}
-              </span>
-              <span
-                aria-hidden="true"
-                className={`h-1 w-4 rounded-full ${metric.color}`}
-              />
-            </dd>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {metric.description}
-            </p>
-          </div>
-        ))}
-      </dl>
-
-      <div className="overflow-hidden rounded-lg border">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b bg-muted/50 text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Slug</th>
-                <th className="px-4 py-3 font-medium">Created at</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filteredNews.map((item) => (
-                <tr key={item.id} className="align-top hover:bg-muted/30">
-                  <td className="min-w-64 px-4 py-4">
-                    <Link
-                      href={`/app/news/${item.slug}`}
-                      className="font-medium hover:underline line-clamp-1"
-                    >
-                      {item.title}
-                    </Link>
-                    <p className="mt-1 line-clamp-1 max-w-md text-xs leading-5 text-muted-foreground">
-                      {item.shortDescription}
-                    </p>
-                  </td>
-                  <td className="px-4 py-4 font-mono text-xs text-muted-foreground truncate">
-                    {item.slug}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">
+                <p className="mt-4 text-[11px] text-muted-foreground">
+                  {getByline(item)}
+                  <span className="px-3" aria-hidden="true">
+                    •
+                  </span>
+                  <time dateTime={item.createdAt}>
                     {formatDate(item.createdAt)}
-                  </td>
-                </tr>
-              ))}
+                  </time>
+                </p>
 
-              {filteredNews.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-4 py-10 text-center text-muted-foreground"
-                  >
-                    No news articles found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                <p className="mt-7 max-w-3xl text-[13px] leading-relaxed text-muted-foreground">
+                  {item.shortDescription}
+                </p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        {filteredNews.length === 0 && (
+          <p className="text-[13px] text-muted-foreground">
+            No news articles found for “{q}”.
+          </p>
+        )}
+
+        <footer className="sticky bg-transparent bottom-0 z-10 mt-auto flex justify-center gap-1.5 py-2 pb-7 pt-5">
+          <form
+            className="relative min-w-0 max-w-xs flex-1"
+            action="/app/news"
+            method="get"
+          >
+            <label className="relative block">
+              <span className="sr-only">Search news</span>
+              <Search
+                aria-hidden="true"
+                strokeWidth={1.5}
+                className="absolute left-3 top-1/2 size-6 -translate-y-1/2 text-muted-foreground"
+              />
+              <input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder="Search"
+                className="h-12 w-full rounded-full border border-border bg-background pl-14 pr-14 text-[13px] outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:border-zinc-800 focus-visible:ring-2 focus-visible:ring-ring dark:focus-visible:border-zinc-200"
+              />
+            </label>
+
+            <Drawer swipeDirection="right">
+              <DrawerTrigger
+                type="button"
+                aria-label="Open filters"
+                className="absolute right-1 top-1/2 inline-flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ListFilter
+                  aria-hidden="true"
+                  className="size-4"
+                  strokeWidth={1.9}
+                />
+              </DrawerTrigger>
+              <DrawerContent className="my-auto mr-2 h-[min(100vh,calc(100vh-1rem))] w-[min(28rem,calc(100vw-2rem))] rounded-l-2xl border rounded-r-xl border-border bg-background">
+                <div className="w-full px-6 py-8">
+                  <DrawerTitle>Filters</DrawerTitle>
+                  <DrawerDescription className="mt-2 text-[13px]">
+                    Refine the news shown in the list.
+                  </DrawerDescription>
+                </div>
+              </DrawerContent>
+            </Drawer>
+          </form>
+
+          <Drawer swipeDirection="right">
+            <DrawerTrigger className="inline-flex h-12 shrink-0 cursor-pointer items-center justify-center rounded-full bg-foreground px-6 text-[13px] font-semibold text-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              CREATE
+            </DrawerTrigger>
+            <DrawerContent className="my-auto mr-2 h-[min(100vh,calc(100vh-1rem))] w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-border bg-background">
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
+                <DrawerTitle className="sr-only">Create article</DrawerTitle>
+                <CreateNewsForm inDrawer />
+              </div>
+            </DrawerContent>
+          </Drawer>
+        </footer>
       </div>
-
-      <footer className='absolute left-0 bottom-10 right-0 flex items-center justify-center'>
-        <label className="relative block w-full lg:max-w-sm">
-          <span className="sr-only">Search news</span>
-          <Search
-            aria-hidden="true"
-            className="absolute left-5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="Search by title or slug..."
-            className="h-14 w-full rounded-full border bg-background pl-14 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </label>
-      </footer>
     </section>
   )
 }
