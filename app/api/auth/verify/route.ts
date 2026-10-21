@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: payload.data?.expiresIn ?? 3600,
+    maxAge: payload.data?.expiresIn ?? 60 * 60 * 24 * 7,
     path: '/',
     ...(process.env.SESSION_COOKIE_DOMAIN
       ? { domain: process.env.SESSION_COOKIE_DOMAIN }
