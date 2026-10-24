@@ -9,69 +9,83 @@ import { toast } from 'sonner'
 import { DrawerClose } from '@/components/ui/drawer'
 
 function createPrompt(articleUrl: string) {
-  return `Access and analyze this news article:
+  const normalizedArticleUrl = (() => {
+    try {
+      return new URL(articleUrl).href
+        .replaceAll('[', '%5B')
+        .replaceAll(']', '%5D')
+        .replaceAll('(', '%28')
+        .replaceAll(')', '%29')
+    } catch {
+      return 'ARTICLE_URL'
+    }
+  })()
+  const faviconUrl = (() => {
+    try {
+      return new URL('/favicon.ico', normalizedArticleUrl).href
+    } catch {
+      return 'https://publication.example/favicon.ico'
+    }
+  })()
+  const articleUrlJson = JSON.stringify(normalizedArticleUrl)
+  const faviconUrlJson = JSON.stringify(faviconUrl)
 
-${articleUrl || 'ARTICLE_URL'}
+  return `Read this news article and create graded English-learning versions based only on its facts:
+${normalizedArticleUrl}
 
-Create English-learning content based exclusively on the article. Preserve all facts, names, dates, numbers, places, and the original meaning. Do not invent information.
+OUTPUT
+Return the valid JSON inside one Markdown code block labeled json. Do not write anything before or after the code block. The response must look like the REQUIRED SHAPE below; never print literal <code> tags.
 
-Create exactly three English versions:
-1. Beginner — CEFR A1–A2
-2. Intermediate — CEFR B1–B2
-3. Advanced — CEFR C1–C2
+CONTENT
+- Write everything in English and paraphrase the source. Do not invent facts.
+- html[0]: Beginner (CEFR A1-A2), 300-400 words.
+- html[1]: Intermediate (CEFR B1-B2), 450-600 words.
+- html[2]: Advanced (CEFR C1-C2), 650-850 words.
+- Each HTML string must decode to this pattern: <article><p>opening story paragraph...</p><section><h3>later section heading</h3><p>more story...</p></section></article>.
+- The first child of <article> must be <p>. Never start an HTML string with the title, a headline, <header>, or a heading. Do not repeat the main title inside the HTML.
+- Include at least two paragraphs and one later heading in each article.
+- Use only these tags: <article>, <section>, <h2>, <h3>, <p>, <blockquote>, <ul>, <ol>, <li>, <strong>, and <em>. Do not use attributes.
+- In the JSON source, write HTML brackets as \\u003C and \\u003E so the interface does not render the tags. Escape any quotation marks inside JSON strings correctly.
 
-Requirements:
-- Rewrite the content instead of copying long passages from the source.
-- html[0], html[1], and html[2] must contain the Beginner, Intermediate, and Advanced versions, respectively.
-- Each html item must be a complete, structured HTML article fragment. Plain text without tags is invalid.
-- Encode every HTML opening bracket < as the JSON Unicode escape \\u003C and every closing bracket > as \\u003E. This prevents chat interfaces from rendering or removing the tags. Do not output literal < or > characters inside html values.
-- Inside every JSON string, encode quotation marks that belong to the article text as \\u0022. Never place an unescaped " character inside an html string. For example, a quotation must be written as \\u003Cblockquote\\u003E\\u003Cp\\u003E\\u0022Quoted text.\\u0022\\u003C/p\\u003E\\u003C/blockquote\\u003E.
-- After JSON decoding, every html item must start with <article> and end with </article>.
-- Structure each version with a heading, multiple paragraphs, and sections. Use lists and blockquotes when they help represent the source accurately.
-- Use semantic tags such as <article>, <section>, <header>, <h2>, <h3>, <p>, <strong>, <em>, <blockquote>, <ul>, <ol>, and <li>.
-- Every paragraph must be enclosed in <p>...</p>. Headings and section titles must also retain their HTML tags.
-- Do not include <html>, <body>, scripts, styles, classes, Markdown, or images.
-- difficult_words must contain one array for each level. Include challenging words or short expressions that actually appear in the corresponding version.
-- short_description must be an English summary with no more than 180 characters.
-- Generate a lowercase, URL-safe English slug using only letters, numbers, and hyphens.
-- Preserve the original author when available; otherwise, use the publication name.
-- Add the original article URL to links as a plain absolute URL. Do not use Markdown link syntax, brackets, parentheses, or HTML in the link field.
-- Ensure the response is valid JSON with no trailing commas.
+FIELDS
+- title: factual English headline, maximum 60 characters.
+- short_description: one short factual English sentence, maximum 80 characters. Do not truncate or use ellipses.
+- difficult_words: exactly three arrays in the same order as html. Each array must contain exactly three words or short expressions that appear verbatim in its corresponding article.
+- slug: lowercase English letters, numbers, and hyphens only.
+- author.name: source byline; use the publication name if no person is credited.
+- links: copy the two link values from the template exactly. Do not convert them to Markdown, add brackets, add spaces, or replace them with search/redirect URLs.
 
-Before responding, verify all of the following:
-1. The complete response can be parsed by JSON.parse() without any error.
-2. All three html strings contain encoded article, heading, section, and paragraph tags.
-3. Every quotation mark inside article content is encoded as \\u0022 and cannot terminate its JSON string.
-4. The link field contains only the plain URL that begins with http:// or https://.
-5. No html value contains only readable prose without encoded tags.
-
-Return only the JSON object. Do not use Markdown fences and do not add explanations before or after it. The output must be directly accepted by JSON.parse().
-
-Use exactly this structure:
+REQUIRED SHAPE
+\`\`\`json
 {
-  "title": "News article title",
-  "short_description": "A short summary of the news article.",
+  "title": "Concise news title",
+  "short_description": "Concise factual summary.",
   "html": [
-    "\\u003Carticle\\u003E\\u003Cheader\\u003E\\u003Ch2\\u003EArticle title\\u003C/h2\\u003E\\u003C/header\\u003E\\u003Csection\\u003E\\u003Cp\\u003EBeginner introduction...\\u003C/p\\u003E\\u003Cp\\u003EBeginner article content...\\u003C/p\\u003E\\u003C/section\\u003E\\u003C/article\\u003E",
-    "\\u003Carticle\\u003E\\u003Cheader\\u003E\\u003Ch2\\u003EArticle title\\u003C/h2\\u003E\\u003C/header\\u003E\\u003Csection\\u003E\\u003Cp\\u003EIntermediate introduction...\\u003C/p\\u003E\\u003Cp\\u003EIntermediate article content...\\u003C/p\\u003E\\u003C/section\\u003E\\u003C/article\\u003E",
-    "\\u003Carticle\\u003E\\u003Cheader\\u003E\\u003Ch2\\u003EArticle title\\u003C/h2\\u003E\\u003C/header\\u003E\\u003Csection\\u003E\\u003Cp\\u003EAdvanced introduction...\\u003C/p\\u003E\\u003Cp\\u003EAdvanced article content...\\u003C/p\\u003E\\u003C/section\\u003E\\u003C/article\\u003E"
+    "\\u003Carticle\\u003E\\u003Cp\\u003E300-400 word Beginner story starts here...\\u003C/p\\u003E\\u003Csection\\u003E\\u003Ch3\\u003ELater heading\\u003C/h3\\u003E\\u003Cp\\u003EMore story...\\u003C/p\\u003E\\u003C/section\\u003E\\u003C/article\\u003E",
+    "\\u003Carticle\\u003E\\u003Cp\\u003E450-600 word Intermediate story starts here...\\u003C/p\\u003E\\u003Csection\\u003E\\u003Ch3\\u003ELater heading\\u003C/h3\\u003E\\u003Cp\\u003EMore story...\\u003C/p\\u003E\\u003C/section\\u003E\\u003C/article\\u003E",
+    "\\u003Carticle\\u003E\\u003Cp\\u003E650-850 word Advanced story starts here...\\u003C/p\\u003E\\u003Csection\\u003E\\u003Ch3\\u003ELater heading\\u003C/h3\\u003E\\u003Cp\\u003EMore story...\\u003C/p\\u003E\\u003C/section\\u003E\\u003C/article\\u003E"
   ],
   "difficult_words": [
-    ["beginner word"],
-    ["intermediate word"],
-    ["advanced word"]
+    ["beginner word 1", "beginner word 2", "beginner word 3"],
+    ["intermediate word 1", "intermediate word 2", "intermediate word 3"],
+    ["advanced word 1", "advanced word 2", "advanced word 3"]
   ],
   "slug": "news-article-title",
   "links": [
     {
-      "link": "${articleUrl || 'ARTICLE_URL'}",
+      "link": ${articleUrlJson},
       "text": "Original article — Publication name"
+    },
+    {
+      "link": ${faviconUrlJson},
+      "text": "Publication favicon"
     }
   ],
   "author": {
     "name": "Author or publication name"
   }
-}`
+}
+\`\`\``
 }
 
 type NewsPayload = {
@@ -82,6 +96,23 @@ type NewsPayload = {
 type ApiError = {
   message?: string
   issues?: Record<string, string[] | undefined>
+}
+
+function isPlainHttpUrl(value: unknown): value is string {
+  if (
+    typeof value !== 'string' ||
+    /\s/.test(value) ||
+    ['[', ']', '(', ')'].some((character) => value.includes(character))
+  ) {
+    return false
+  }
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 function formatApiError(error: ApiError | string | undefined) {
@@ -131,7 +162,17 @@ export default function CreateNewsForm({
     let body: NewsPayload
 
     try {
-      body = JSON.parse(json) as NewsPayload
+      const trimmedJson = json.trim()
+      const fencedContent = trimmedJson.match(
+        /^```(?:json)?\s*([\s\S]*?)\s*```$/i,
+      )?.[1]
+      const legacyCodeContent = trimmedJson.match(
+        /^<code>\s*([\s\S]*?)\s*<\/code>$/i,
+      )?.[1]
+
+      body = JSON.parse(
+        fencedContent ?? legacyCodeContent ?? trimmedJson,
+      ) as NewsPayload
     } catch {
       showError('The provided content is not valid JSON.')
       return
@@ -149,12 +190,30 @@ export default function CreateNewsForm({
         (content) =>
           typeof content !== 'string' ||
           !/^\s*<article(?:\s[^>]*)?>[\s\S]*<\/article>\s*$/i.test(content) ||
+          !/^\s*<article(?:\s[^>]*)?>\s*<p(?:\s[^>]*)?>/i.test(content) ||
           !/<h[1-6](?:\s[^>]*)?>[\s\S]*?<\/h[1-6]>/i.test(content) ||
           (content.match(/<p(?:\s[^>]*)?>/gi)?.length ?? 0) < 2,
       )
     ) {
       showError(
-        'The JSON must contain exactly three structured HTML articles, each with an <article> element, a heading, and at least two paragraphs.',
+        'The JSON must contain exactly three structured HTML articles, each starting with a paragraph instead of a title and containing a later heading plus at least two paragraphs.',
+      )
+      return
+    }
+
+    if (
+      !Array.isArray(body.links) ||
+      body.links.length < 2 ||
+      body.links.some(
+        (item) =>
+          !item ||
+          typeof item !== 'object' ||
+          !('link' in item) ||
+          !isPlainHttpUrl(item.link),
+      )
+    ) {
+      showError(
+        'Every link must be a plain HTTP URL string without Markdown, brackets, parentheses, or spaces.',
       )
       return
     }

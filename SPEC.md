@@ -12,6 +12,9 @@ Fornecer uma interface administrativa para autenticar editores, consultar o cat�
 - Listar notícias, abrir `/app/news/:slug` e alternar entre Beginner, Intermediate e Advanced.
 - Criar notícias por `/api/news`, sem expor o JWT ao JavaScript do navegador.
 - O formulário deve respeitar o contrato do `ms-core`: três HTMLs, três listas de palavras, resumo de até 180 caracteres, slug seguro, fonte e autor.
+- O prompt de criação deve colocar o artigo original em `links[0]` e o favicon absoluto da publicação em `links[1]`.
+- O prompt deve limitar o título a 60 caracteres e o resumo a uma frase de até 80 caracteres para boa leitura nos cards do app.
+- O prompt deve gerar artigos progressivamente maiores por nível, iniciar cada HTML pelo corpo em um parágrafo (sem repetir o título) e apresentar o JSON em um bloco de código Markdown; o formulário remove esse wrapper antes do parsing.
 
 ## Arquitetura
 

@@ -130,7 +130,7 @@ export default async function Page({
               <section className="mt-8">
                 <article
                   key={`${news.id}-${getContentKey(selectedContent)}`}
-                  className="prose prose-sm prose-strong:font-medium max-w-none [&_b]:font-medium"
+                  className="prose prose-sm dark:prose-invert prose-strong:font-medium max-w-none [&_b]:font-medium"
                   // biome-ignore lint/security/noDangerouslySetInnerHtml: The API stores the article as trusted HTML.
                   dangerouslySetInnerHTML={{ __html: selectedContent }}
                 />
